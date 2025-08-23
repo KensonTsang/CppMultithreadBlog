@@ -39,3 +39,31 @@
 
 # debug information files
 *.dwo
+# CMake build files
+/build/
+/bin/
+/Debug/
+/Release/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# macOS
+.DS_Store
+
+# Editor/IDE
+*.swp
+*.swo
+*.swn
+*.bak
+*.tmp
+*.user
+*.sublime-workspace
+*.sublime-project
+.idea/
+*.iml
