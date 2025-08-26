@@ -1,6 +1,9 @@
 #include <iostream>
+#include "Basic.cpp"
 
 int main() {
-    std::cout << "Hello, C++ with CMake!" << std::endl;    
+    Basic example;
+    // example.Example1();
+    example.Example2();
     return 0;
 }
