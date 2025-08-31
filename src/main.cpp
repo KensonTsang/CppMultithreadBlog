@@ -10,9 +10,10 @@ int main() {
 
     
     Practical practical;
-    practical.Example1();
-    practical.Example2();
+    // practical.Example1();
+    // practical.Example2();
     practical.Example3();
+    practical.Example4();
 
     return 0;
 }
