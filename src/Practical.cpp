@@ -4,6 +4,7 @@
 #include <vector>
 #include <algorithm>
 #include "MutexProtected.h"
+#include "CondVarProtected.h"
 
 
 
@@ -23,6 +24,7 @@ public:
     void Example2();
     void Example3();
     void Example4();
+    void Example5();
 
 
     class MyRequest {
@@ -138,9 +140,9 @@ public:
     
     public:
         
-        MyWorker(MyProducer& producer) : _producer(producer){
-            _thread = std::thread(&MyWorker::Process, this);
-            _id = _id = std::hash<std::thread::id>()(_thread.get_id());
+        MyWorker(MyProducer& producer, size_t id) : _producer(producer),
+                                                    _id(id), 
+                                                    _thread(std::thread(&MyWorker::Process, this)){            
             std::cout << "Thread " << _id << " started " << std::endl;
         }
 
@@ -230,14 +232,13 @@ public:
         MutexProtected<Result> _result; 
     };
 
-
     class MyWorker2 {
     
     public:
         
-        MyWorker2(MyProducer2& producer) : _producer(producer){
-            _thread = std::thread(&MyWorker2::Process, this);
-            _id = _id = std::hash<std::thread::id>()(_thread.get_id());
+        MyWorker2(MyProducer2& producer, std::size_t id) : _producer(producer),
+                                                            _id(id),
+                                                            _thread(std::thread(&MyWorker2::Process, this)) {            
             std::cout << "Thread " << _id << " started " << std::endl;
         }
 
@@ -273,6 +274,122 @@ public:
         }
 
         MyProducer2& _producer;
+        std::thread _thread;
+        std::size_t _id;
+    };
+
+    class MyProducer3 {
+    public:
+
+        MyProducer3(long long int start, int count) {
+                auto r = _request.scopedLock();  
+                r->start = start;                     
+                r->count = count;
+                r->current = start;
+            }
+
+        long long int Produce() {
+            auto r = _request.scopedLock();
+            if (r->current < r->start + r->count) {
+                auto ret = r->current;
+                r->current++;
+                return ret;
+            }
+            return -1;                
+        }
+
+        void AddResult(long long int result) {
+            auto r = _result.scopedLock();
+            r->data.push_back(result);
+        }
+
+        void ThreadEnd() {
+            {
+                auto r = _result.scopedLock();
+                r->endedThreadCount++;
+            }
+            _result.notify_all();
+        }
+
+        void WaitUntilEnd() {
+            auto r = _result.scopedLock();
+            while (r->endedThreadCount < kThreadCount) {                
+                r.wait();
+            }
+        }
+
+        void Print() {
+            auto result = _result.scopedLock();
+            std::sort(result->data.begin(),result->data.end());
+            for (const auto& val : result->data) {
+                std::cout << val << " ";
+            }
+            std::cout << std::endl;
+        }
+
+    private:
+
+        struct Request
+        {
+            long long int start = 0;
+            long long int count = 0;
+            long long int current = 0;
+        };
+        
+        struct Result
+        {
+            std::vector<long long int> data;
+            int endedThreadCount = 0;
+        };
+
+        CondVarProtected<Request> _request;
+        CondVarProtected<Result> _result; 
+    };
+
+    class MyWorker3 {
+    
+    public:
+        
+        MyWorker3(MyProducer3& producer, std::size_t id) 
+                : _producer(producer),
+                _id(id), 
+                _thread(std::thread(&MyWorker3::Process, this)) {            
+            std::cout << "Thread " << _id << " started " << std::endl;
+        }
+
+        ~MyWorker3() {
+            Join();
+        }
+
+        void Join() {
+            if (_thread.joinable()) {
+                _thread.join();
+            }
+        }
+        
+
+    private:
+
+        void Process() {
+
+            for(;;) {
+                auto num = _producer.Produce();
+                if(num == -1) {
+                    _producer.ThreadEnd();
+                    break;
+                }
+                
+                if(isPrimeNumber(num)){
+                    std::cout << num << " is prime." << std::endl;
+                    _producer.AddResult(num);
+                }
+            }
+
+            std::cout << "Thread " << _id << " end" << std::endl;
+
+        }
+
+        MyProducer3& _producer;
         std::thread _thread;
         std::size_t _id;
     };
@@ -339,10 +456,10 @@ void Practical::Example3() {
     MyProducer producer(kPrimeStart,kBatchSize * kThreadCount);
 
     MyWorker workers[kThreadCount] {
-        MyWorker(producer),
-        MyWorker(producer),
-        MyWorker(producer),
-        MyWorker(producer)
+        MyWorker(producer, 1),
+        MyWorker(producer, 2),
+        MyWorker(producer, 3),
+        MyWorker(producer, 4)
     };
 
     for (auto& worker : workers) {
@@ -367,10 +484,10 @@ void Practical::Example4() {
     MyProducer2 producer(kPrimeStart,kBatchSize * kThreadCount);
 
     MyWorker2 workers[kThreadCount] {
-        MyWorker2(producer),
-        MyWorker2(producer),
-        MyWorker2(producer),
-        MyWorker2(producer)
+        MyWorker2(producer, 1),
+        MyWorker2(producer, 2),
+        MyWorker2(producer, 3),
+        MyWorker2(producer, 4)
     };
 
     for (auto& worker : workers) {
@@ -386,4 +503,37 @@ void Practical::Example4() {
 
     std::cout << "=======================================" << std::endl;
 
+}
+
+void Practical::Example5() {
+    std::cout << "========== Running Practical Example 5 ==========" << std::endl;
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    MyProducer3 producer(kPrimeStart,kBatchSize * kThreadCount);
+
+    MyWorker3 workers[kThreadCount] {
+        MyWorker3(producer, 1),
+        MyWorker3(producer, 2),
+        MyWorker3(producer, 3),
+        MyWorker3(producer, 4)
+    };
+
+    producer.WaitUntilEnd();
+
+    for (auto& worker : workers) {
+        worker.Join();
+    }
+   
+
+    producer.Print();
+
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    std::cout << "Duration: " << duration.count() << " seconds" << std::endl;
+
+
+
+    std::cout << "=======================================" << std::endl;
 }
