@@ -1,6 +1,7 @@
 #include <iostream>
 #include "Basic.cpp"
 #include "Practical.cpp"
+#include "Deadlock.cpp"
 
 int main() {
 
@@ -15,6 +16,11 @@ int main() {
     // practical.Example3();        // Multithread with producer/worker pattern
     // practical.Example4();        // Multithread with producer/worker pattern + MutexProtected pattern
     // practical.Example5();        // Multithread with producer/worker pattern + MutexProtected pattern + CondVar pattern
+
+    Deadlock deadlock;
+    // deadlock.Example1();
+    // deadlock.Example2();
+    deadlock.Example3();
 
     return 0;
 }

@@ -11,7 +11,7 @@ public:
 
     MyLocked(MyLocked && r) : _lock(std::move(r._lock)) {
         _data = r._data;
-        r._data = nullptr;
+        r._data = nullptr;        
     }
 
     T* operator-> () {return _data;}
