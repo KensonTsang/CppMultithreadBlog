@@ -8,14 +8,13 @@ set(CMAKE_CXX_STANDARD 17)
 # Include directories
 include_directories(include)
 
-# Source files
-file(GLOB_RECURSE SOURCES "src/*.cpp")
-
 # Header files
 file(GLOB_RECURSE HEADERS "include/*.h")
 
 # Add executable
-add_executable(CppMultithreadBlog ${SOURCES} ${HEADERS})
+# main.cpp #includes the other src/*.cpp files directly (unity build),
+# so only it is passed here to avoid compiling each class twice.
+add_executable(CppMultithreadBlog src/main.cpp ${HEADERS})
 
 # Set build type to Debug if not specified
 if(NOT CMAKE_BUILD_TYPE)
